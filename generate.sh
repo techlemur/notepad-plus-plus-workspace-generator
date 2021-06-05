@@ -1,18 +1,39 @@
 #!/bin/bash
 
+defaultignorefiles="package-lock.json report.html ThirdPartyNotices.txt THANKS.md oss-licenses.json"
+
+defaultignorefolders=".git .vs node_modules"
+
+ignorefiles=''
+ignorefolders=''
+
 PARAMS=""
 while (( "$#" )); do
 	case "$1" in
 	-h|--help)
 		echo "  Options:
+	-h|--help
+		Show this message
+	-a|--all
+		Disable default ignore settings and add everything
 	-n|--name
 		Project Name
 	-f|--file
 		File Name
+	-i|--ignore
+		Specify file names to ignore
+	-if|--ignoreFolders|--ignorefolders
+		Specify folder names to ignore
+	-d|--defaults
+		Add defaults to custom ignore rules
 	-v|--verbose
 		Print the generated file when finished
 "
 		exit  1
+		shift
+		;;
+	-a|--all)
+		addall=true
 		shift
 		;;
 	-n|--name)
@@ -22,6 +43,18 @@ while (( "$#" )); do
 		;;
 	-f|--file)
 		outfile="$2"
+		shift
+		;;
+	-i|--ignore)
+		ignorefiles="$2"
+		shift
+		;;
+	-if|--ignoreFolders|--ignorefolders)
+		ignorefolders="$2"
+		shift
+		;;
+	-d|--defaults)
+		adddefaults=true
 		shift
 		;;
 	-v|--verbose)
@@ -38,10 +71,9 @@ while (( "$#" )); do
 		;;
 	esac
 done
-
-
 # set positional arguments in their proper place
 eval set -- "$PARAMS"
+
 if [ -z $outfile ]
 then
 	outfile=".npworkspace"
@@ -52,11 +84,34 @@ then
 	projectName="$(basename $PWD)"
 fi
 
+
+if [ -z $addall ] # Don't set ignore lists if -a flag was given
+then
+	
+	if [ $adddefaults ]
+	then
+		ignorefiles=$ignorefiles" "$defaultignorefiles
+		ignorefolders=$ignorefolders" "$defaultignorefolders
+	fi
+	
+	if [ -z "$ignorefiles" ]
+	then
+		ignorefiles=$defaultignorefiles
+	fi
+
+	if [ -z "$ignorefolders" ]
+	then
+		ignorefolders=$defaultignorefolders
+	fi
+fi
+
 echo writing to project $outfile to $outfile
 
-ignorefiles="package-lock.json report.html ThirdPartyNotices.txt THANKS.md oss-licenses.json"
+IGNOREFOLDERS=''
 
-ignorefolders="package-lock.json"
+for TMP in $ignorefolders; do
+	IGNOREFOLDERS=$IGNOREFOLDERS"! -iname '$TMP' "
+done
 
 contains() {
 	for item in $2
@@ -69,21 +124,8 @@ contains() {
 	return 1;
 }
 
-
 recfind(){
-	find $1 -maxdepth 0 -path ./node_modules -prune -o -type d  \( \
-	! -iname "*.min*" \
-	! -iname ".min.js" \
-	! -path "." \
-	! -path "*.git" \
-	! -path "*.vs*" \
-	! -path "*img*" \
-	! -path "*inc*" \
-	! -path "*dev*" \
-	! -path "*node_modules*" \
-	! -path "./node_modules/*" \
-	! -path "./node_modules" \
-	\) -print0 | 
+	eval "find $1 -maxdepth 0 -path ./node_modules -prune -o -type d  \( $IGNOREFOLDERS \) -print0" | 
 	while IFS= read -r -d '' line; do 
 		# echo $1
 		# echo ./${line:2}
@@ -98,22 +140,8 @@ recfind(){
 				echo "	<File name=\"${file:2}\" />" >> $outfile
 			fi
 		done
-		find ./${line:2} -maxdepth 1 -mindepth 1 -path ./node_modules -prune -o -type d \( \
-	! -iname "*.min*" \
-	! -iname "*.min.js" \
-	! -path "." \
-	! -path "*.git" \
-	! -path "*.vs*" \
-	! -path "*img*" \
-	! -path "*inc*" \
-	! -path "*dev*" \
-	! -path "*node_modules*" \
-	! -path "./node_modules/*" \
-	! -path "./node_modules" \
-	\) -print0 | 
+		eval " find ./${line:2} -maxdepth 1 -mindepth 1 -path ./node_modules -prune -o -type d \( $IGNOREFOLDERS \) -print0" |  
 		while IFS= read -r -d '' folder; do 
-			#echo $folder
-			#echo ${folder##*/}
 			echo "<Folder name=\"${folder##*/}\">" >> $outfile
 			recfind $folder
 			echo "</Folder>"  >> $outfile
@@ -128,6 +156,5 @@ echo "</Project>" >> $outfile
 echo "</NotepadPlus>" >> $outfile
 
 chmod 777 $outfile
-
 
 if [ $VERBOSE ];then	cat $outfile; fi
