@@ -6,11 +6,12 @@ Small bash script for generating workspace files for Notepad++
 
 - **-h | --help** -- Print help and exit
 - **-a | --all** -- Disable default ignore settings and add everything
-- **-n | --name** -- Project Name
+- **-d | --defaults** -- Add defaults to custom ignore rules
 - **-f | --file** -- File Name
 - **-i | --ignore** -- Specify file names to ignore
 - **-if | --ignoreFolders|--ignorefolders** -- Specify folder names to ignore
-- **-d | --defaults** -- Add defaults to custom ignore rules
+- **-n | --name** -- Project Name
+- **-s |--sort** -- Sort flags (must be wrapped in quotes.  ex: '-f -n')
 - **-v | --verbose** -- Be more verbose
 
 ## Examples
